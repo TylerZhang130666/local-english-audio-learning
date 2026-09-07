@@ -156,7 +156,7 @@ $('loadExample').addEventListener('click', async function () {
 
 function ensureWorker() {
   if (worker) return;
-  worker = new Worker('./whisper-worker.js', { type: 'module' });
+  worker = new Worker('./whisper-worker.js?v=20260907-1', { type: 'module' });
   worker.onmessage = function (event) {
     const message = event.data || {};
     if (message.type === 'model-progress') {
