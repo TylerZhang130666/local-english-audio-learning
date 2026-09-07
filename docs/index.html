@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="录音不上传，在浏览器中使用 Whisper 转录并练习英语听力与发音。">
+  <title>Listen & Learn · 浏览器英语录音学习</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header>
+  <div class="brand">◉ Listen & Learn <span>把会议变成你的英语课堂</span></div>
+  <div class="local">● 浏览器本地处理 · 录音不上传</div>
+</header>
+<main>
+  <aside>
+    <div class="eyebrow">YOUR LISTENING SPACE</div>
+    <h1>听懂一句，<br>积累一句。</h1>
+    <p class="muted">选择电脑里的录音。网页会在当前浏览器中转录、播放和保存学习记录。</p>
+
+    <label for="audioFile">选择录音</label>
+    <input id="audioFile" class="file-input" type="file" accept="audio/*,.m4a,.mp3,.wav,.flac,.ogg,.aac">
+    <button id="loadExample" class="secondary-wide">先用 11 秒英文示例体验</button>
+    <p class="hint">支持浏览器能够解码的 m4a / mp3 / wav 等格式。重新打开网页后，需要再次选择同一个录音才能播放。</p>
+
+    <div class="model-card">
+      <strong>浏览器 Whisper 模型：tiny.en</strong>
+      <span id="device">正在检查 WebGPU…</span>
+      <small>首次使用会下载并缓存模型。长录音会分段处理，可以随时中止。</small>
+    </div>
+    <div class="transcribe-actions">
+      <button id="transcribe" class="primary" disabled>开始浏览器英文转录</button>
+      <button id="cancel" hidden>中止</button>
+    </div>
+    <p id="status" role="status">请选择录音，或先加载示例。</p>
+    <progress id="progress" max="100" value="0" hidden></progress>
+
+    <section class="player">
+      <div class="eyebrow">LISTEN CLOSELY</div>
+      <h2 id="title">还没有选择录音</h2>
+      <audio id="audio" controls preload="metadata"></audio>
+      <div class="boost-panel">
+        <label for="boost">音量增强 <output id="boostValue">1×</output></label>
+        <input id="boost" type="range" min="1" max="5" step="0.25" value="1">
+        <p id="boostStatus" class="hint">声音较小时可先调到 2×；若出现失真，请降低倍数。</p>
+      </div>
+      <div class="seek-panel">
+        <label for="seek">拖动定位</label>
+        <input id="seek" type="range" min="0" max="0" step="0.1" value="0" disabled>
+        <div class="seek-times"><span id="elapsed">00:00:00</span><span id="duration">00:00:00</span></div>
+      </div>
+      <div class="controls">
+        <button id="back">↶ 5 秒</button>
+        <select id="speed" aria-label="播放速度">
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+        <button id="forward">5 秒 ↷</button>
+      </div>
+    </section>
+
+    <section class="bookmarks">
+      <h2>📌 录音位置标记</h2>
+      <button id="addBookmark" disabled>标记当前时间</button>
+      <div id="bookmarkList"></div>
+    </section>
+    <p class="privacy">录音内容不会上传。模型文件由 Hugging Face 提供；逐字稿、标记和发音练习录音保存在当前浏览器。</p>
+  </aside>
+
+  <article>
+    <div class="toolbar">
+      <div>
+        <div class="eyebrow">TRANSCRIPT & NOTES</div>
+        <h2>逐字稿与学习笔记 <small id="count"></small></h2>
+      </div>
+      <button id="save" disabled>保存到浏览器</button>
+    </div>
+    <div class="filters">
+      <input id="search" placeholder="搜索逐字稿、回答或笔记…" aria-label="搜索">
+      <select id="filter" aria-label="筛选">
+        <option value="all">全部句子</option>
+        <option value="listening">👂 听不懂</option>
+        <option value="pronunciation">🔊 发音不匹配</option>
+        <option value="speaking">🗣 不会说</option>
+        <option value="mastered">✅ 已掌握</option>
+        <option value="favorite">⭐ 收藏表达</option>
+        <option value="highlight">🟨 待学习</option>
+      </select>
+      <select id="format" aria-label="导出格式">
+        <option value="md">Markdown</option>
+        <option value="txt">TXT</option>
+        <option value="srt">SRT</option>
+        <option value="json">JSON 备份</option>
+      </select>
+      <button id="export" disabled>导出</button>
+    </div>
+    <p id="filterSummary" class="filter-summary">👂 0 · 🔊 0 · 🗣 0 · ✅ 0</p>
+    <p id="saveStatus" class="hint" role="status">修改会保存在当前浏览器，也可以导出 JSON 备份。</p>
+    <p class="edit-guide">网页端默认使用速度更快的 tiny.en。40 分钟以上录音可能耗时较长；需要更高准确率时请使用仓库中的本地 Python 版。</p>
+    <div id="segments">
+      <div class="empty"><div class="empty-icon">♫</div><h2>从一段真实的对话开始</h2><p>选择录音后开始转录。<br>完成后可以逐句修改、标记和练习。</p></div>
+    </div>
+  </article>
+</main>
+
+<dialog id="wordDialog" class="word-dialog">
+  <form method="dialog"><button class="dialog-close" aria-label="关闭">×</button></form>
+  <div class="eyebrow">WORD PRONUNCIATION</div>
+  <h2 id="wordTitle">Word</h2>
+  <p id="wordIpa" class="word-ipa"></p>
+  <p id="wordMeta" class="word-meta"></p>
+  <div id="ipaSymbols" class="ipa-symbols"></div>
+  <div id="ipaHelp" class="ipa-help">点击音标查看发音提示。</div>
+  <div class="word-actions">
+    <button id="speakWord">🔊 系统美式发音</button>
+    <button id="recordWord">🎤 开始录音</button>
+    <button id="playRecording" disabled>▶ 我的录音</button>
+  </div>
+  <button id="mismatchWord" class="mismatch-word">⚠ 标记 Pronunciation mismatch</button>
+  <p id="recordStatus" class="hint">录音只保存在当前浏览器，不上传，也不自动生成准确率分数。</p>
+</dialog>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

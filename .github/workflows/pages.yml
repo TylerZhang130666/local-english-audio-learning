@@ -1,0 +1,55 @@
+name: Deploy browser app to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Prepare Transformers.js Whisper model
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODEL_DIR="docs/models/onnx-community/whisper-tiny.en"
+          ONNX_DIR="$MODEL_DIR/onnx"
+          BASE="https://huggingface.co/onnx-community/whisper-tiny.en/resolve/main"
+          mkdir -p "$ONNX_DIR"
+          for file in added_tokens.json config.json generation_config.json merges.txt normalizer.json preprocessor_config.json quantize_config.json special_tokens_map.json tokenizer.json tokenizer_config.json vocab.json; do
+            curl --fail --location --retry 5 --retry-all-errors "$BASE/$file" --output "$MODEL_DIR/$file"
+          done
+          for file in encoder_model.onnx decoder_model_merged_q4.onnx encoder_model_quantized.onnx decoder_model_merged_quantized.onnx; do
+            curl --fail --location --retry 5 --retry-all-errors "$BASE/onnx/$file" --output "$ONNX_DIR/$file"
+          done
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
