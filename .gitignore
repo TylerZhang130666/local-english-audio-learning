@@ -1,0 +1,16 @@
+.venv/
+audio/*
+data/*
+!audio/.gitkeep
+!audio/example_jfk.wav
+!data/.gitkeep
+__pycache__/
+*.py[cod]
+*.log
+output/
+tmp/
+tmp*/
+test-*/
+.cache/
+models/
+.DS_Store
