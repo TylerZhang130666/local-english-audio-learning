@@ -51,8 +51,6 @@ self.onmessage = async function (event) {
       const audio = new Float32Array(message.audio);
       const result = await transcriber(audio, {
         return_timestamps: true,
-        language: 'en',
-        task: 'transcribe',
         top_k: 0,
         do_sample: false
       });
